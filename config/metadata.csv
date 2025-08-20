@@ -1,0 +1,19 @@
+# Metadata file describing each sample.
+# Columns:
+#   sample      - sample name (must match samples.txt & FASTQ files)
+#   condition   - experimental group (e.g. treated, control)
+#   replicate   - biological replicate number (1, 2, 3...)
+
+sample,condition,replicate
+SRR12091635_1,control,1
+SRR12091635_2,control,1
+SRR12091636_1,control,2
+SRR12091636_2,control,2
+SRR12091637_1,control,3
+SRR12091637_2,control,3
+SRR12091638_1,treated,1
+SRR12091638_2,treated,1
+SRR12091639_1,treated,2
+SRR12091639_2,treated,2
+SRR12091640_1,treated,3
+SRR12091640_2,treated,3

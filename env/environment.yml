@@ -1,0 +1,19 @@
+# Make sure to activate the conda environment before running this script:
+# conda activate rna-seq-env
+
+name: rna-seq-env
+channels: 
+- conda-forge
+- bioconda
+- defaults
+dependencies:
+# Quality Control
+- fastqc
+- multiqc
+
+# Read Trimming
+- trimmomatic
+
+# Alignment
+- hisat2
+- samtools
