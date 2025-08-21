@@ -8,8 +8,9 @@
 #and the script can run sequentially or in parallel on multiple cores.
 #
 # Usage:
-# ./trim_reads.sh [NUM_THREADS]
+# ./trim_reads.sh [NUM_THREADS] [PHRED_OFFSET]
 # - NUM_THREADS: optional, default = 1 (sequential). Set >1 for parallel mode.
+# - PHRED_OFFSET: optional, default = phred33
 # =======================================================================================
 
 set -euo pipefail
@@ -18,12 +19,17 @@ set -euo pipefail
 TRIM_INPUT="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/data/raw"
 TRIM_OUTPUT="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/data/trimmed"
 CONFIG_DIR="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/config"
+LOGS_DIR="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/logs"
 
 # Adapter file
-ADAPTERS="${CONFIG_DIR}/TruSeq3-PE.fa"
+ADAPTERS="${CONFIG_DIR}/TruSeq3-PE-2.fa"
+
+# Phred offset
+PHRED=${2:-"-phred33"}
 
 # Make sure output directory exists
 mkdir -p "$TRIM_OUTPUT"
+mkdir -p "$LOGS_DIR"
 
 # Check samples.txt exists and is not empty
 if [ ! -s "${CONFIG_DIR}/samples.txt" ]; then
@@ -46,7 +52,7 @@ if [ "$THREADS" -gt 1 ]; then
     fi
 
     # Export variables so parallel jobs can access them
-    export TRIM_INPUT TRIM_OUTPUT CONFIG_DIR ADAPTERS
+    export TRIM_INPUT TRIM_OUTPUT LOGS_DIR CONFIG_DIR ADAPTERS PHRED
 
     # Run Trimmomatic in parallel
     parallel -j "$SAMPLES_AT_ONCE" -a "$CONFIG_DIR/samples.txt" '
@@ -60,7 +66,7 @@ if [ "$THREADS" -gt 1 ]; then
         PAIRED_R2="${TRIM_OUTPUT}/${SAMPLE}_2_paired.fastq.gz"
         UNPAIRED_R1="${TRIM_OUTPUT}/${SAMPLE}_1_unpaired.fastq.gz"
         UNPAIRED_R2="${TRIM_OUTPUT}/${SAMPLE}_2_unpaired.fastq.gz"
-        LOG_FILE="${TRIM_OUTPUT}/${SAMPLE}_trimmomatic.log"
+        LOG_FILE="${LOGS_DIR}/${SAMPLE}_trimmomatic.log"
 
         # Check if input files exist
         if [ ! -f "$RAW_R1" ] || [ ! -f "$RAW_R2" ]; then
@@ -75,11 +81,11 @@ if [ "$THREADS" -gt 1 ]; then
         fi
 
         # Run Trimmomatic
-        trimmomatic PE "$RAW_R1" "$RAW_R2" \
+        trimmomatic PE $PHRED "$RAW_R1" "$RAW_R2" \
             "$PAIRED_R1" "$UNPAIRED_R1" \
             "$PAIRED_R2" "$UNPAIRED_R2" \
-            ILLUMINACLIP:"$ADAPTERS":2:30:10:2:True \
-            LEADING:3 TRAILING:3 MINLEN:36 \
+            ILLUMINACLIP:"$ADAPTERS":2:30:10 \
+            LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50 \
             > "$LOG_FILE" 2>&1
 
         echo "Finished $SAMPLE. Log saved to $LOG_FILE"
@@ -89,7 +95,7 @@ else
     # Run Trimmmomatic sequentially
     echo "Running Trimmomatic sequentially..."
 # Loop through samples
-    while read SAMPLE; do
+    while IFS= read -r SAMPLE || [ -n "$SAMPLE" ]; do
         RAW_R1="${TRIM_INPUT}/${SAMPLE}_1.fastq.gz"
         RAW_R2="${TRIM_INPUT}/${SAMPLE}_2.fastq.gz"
 
@@ -98,7 +104,7 @@ else
         PAIRED_R2="${TRIM_OUTPUT}/${SAMPLE}_2_paired.fastq.gz"
         UNPAIRED_R1="${TRIM_OUTPUT}/${SAMPLE}_1_unpaired.fastq.gz"
         UNPAIRED_R2="${TRIM_OUTPUT}/${SAMPLE}_2_unpaired.fastq.gz"
-        LOG_FILE="${TRIM_OUTPUT}/${SAMPLE}_trimmomatic.log"
+        LOG_FILE="${LOGS_DIR}/${SAMPLE}_trimmomatic.log"
 
         # Check if input files exist
         if [ ! -f "$RAW_R1" ] || [ ! -f "$RAW_R2" ]; then
@@ -113,11 +119,11 @@ else
         fi
 
         # Run Trimmomatic (paired-end)
-        trimmomatic PE "$RAW_R1" "$RAW_R2" \
+        trimmomatic PE $PHRED "$RAW_R1" "$RAW_R2" \
             "$PAIRED_R1" "$UNPAIRED_R1" \
             "$PAIRED_R2" "$UNPAIRED_R2" \
-            ILLUMINACLIP:"$ADAPTERS":2:30:10:2:True \
-            LEADING:3 TRAILING:3 MINLEN:36 \
+            ILLUMINACLIP:"$ADAPTERS":2:30:10 \
+            LEADING:3 TRAILING:3 SLIDINGWINDOW:4:20 MINLEN:50 \
             > "$LOG_FILE" 2>&1
 
         echo "Finished $SAMPLE. Log saved to $LOG_FILE"
