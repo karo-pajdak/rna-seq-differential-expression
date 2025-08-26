@@ -2,7 +2,7 @@
 # =======================================================================================
 # HISAT2 Alignment Script
 # =======================================================================================
-# This script m# Maps NGS reads against a single reference genome using HISAT2.
+# This script maps NGS reads against a single reference genome using HISAT2.
 # Index will be built from reference genome (reference/reference_genome) if pre-built index 
 # is not in reference/genome_index folder. Each sample uses multiple threads if specified.
 #
@@ -75,5 +75,8 @@ while IFS= read -r SAMPLE || [ -n "$SAMPLE" ]; do
         -1 "$R1" -2 "$R2" \
         -S /dev/stdout 2> "$SAMPLE_LOG" | \
     samtools sort -@ "$THREADS" -o "$HISAT_OUTPUT/${SAMPLE}.sorted.bam"
+
+    # Index the sorted BAM
+    samtools index "$HISAT_OUTPUT/${SAMPLE}.sorted.bam"
 
 done < "$CONFIG_DIR/samples.txt"
