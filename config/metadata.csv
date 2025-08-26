@@ -1,5 +1,3 @@
 sample,condition,replicate
-SRR32368336_1,treated,1
-SRR32368336_2,treated,1
-SRR32368337_1,control,1
-SRR32368337_2,control,1
+SRR32368336,treated,1
+SRR32368337,control,1
