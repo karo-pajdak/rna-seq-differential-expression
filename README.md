@@ -1,1 +1,4 @@
 # rna-seq-differential-expression
+This repository contains a modular RNA-seq analysis pipeline supporting both alignment-based and lightweight pseudoalignment approaches. It is organized to separate configuration, raw data, scripts, results, and documentation. Key tools include FastQC and MultiQC for quality control, Trimmomatic for read trimming, HISAT2 for genome alignment, featureCounts for gene-level counting, Salmon for transcript-level quantification, and DESeq2 for differential expression analysis. The scripts are designed to handle paired-end data, support multi-threading, and produce outputs organized for downstream analysis, including QC reports, sorted BAMs, count tables, differential expression results, and plots.
+
+This README currently provides an overview of the pipeline structure and goals; it will be updated to a more traditional style with full instructions and usage examples once all scripting is complete.
