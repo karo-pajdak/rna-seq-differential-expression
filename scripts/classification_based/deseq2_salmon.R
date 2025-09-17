@@ -23,13 +23,19 @@ library(tximport)
 library(txdbmaker)
 library(DESeq2)
 library(ggrepel)
+library(dplyr)
+library(pheatmap)
+library(RColorBrewer)
+library(tidyr)
+
+
 
 ## Set Up ##
 # Define working directory paths
 input_dir <- "~/BioinformaticsPortfolio/rna-seq-differential-expression/results/salmon"
 meta_dir <- "~/BioinformaticsPortfolio/rna-seq-differential-expression/config/"
 annotation_dir <- "~/BioinformaticsPortfolio/rna-seq-differential-expression/data/reference/annotation"
-output_dir <- file.path(Sys.getenv("HOME"), "BioinformaticsPortfolio/rna-seq-differential-expression/results/deseq")
+output_dir <- file.path(Sys.getenv("HOME"), "BioinformaticsPortfolio/rna-seq-differential-expression/results/deseq_salmon")
 
 # Create output directory if it doesn't exist
 if (!dir.exists(output_dir)) {
@@ -47,7 +53,11 @@ names(files) <- rownames(metadata)
 # Create transcript-to-gene mapping (tx2gene) from gtf file
 setwd(annotation_dir)
 txdb <- txdbmaker::makeTxDbFromGFF("annotation.gtf", format = "gtf")
-tx2gene <- select(txdb, keys(txdb, "TXNAME"), "GENEID", "TXNAME")
+tx_table <- transcripts(txdb, columns = c("tx_name", "gene_id"))
+tx2gene <- tx_table %>%
+  as.data.frame() %>%
+  dplyr::select(TXNAME = tx_name, GENEID = gene_id) %>%
+  mutate(GENEID = sapply(GENEID, `[`, 1))  # extract first element from each list
 
 #Import
 txi <- tximport(files, type="salmon", tx2gene=tx2gene)
@@ -132,15 +142,83 @@ text(top_genes$log2FoldChange, -log10(top_genes$padj),
      labels=rownames(top_genes), pos=3, cex=0.6, col="black", xpd=TRUE)
 dev.off()
 
-# Counts Summary
+# Counts Summary (significant genes padj < 0.05 and upregulated vs downregulated)
+res_raw <- results(dds)
+res_filtered <- res_raw[!is.na(res_raw$padj),]
+total_genes <- nrow(res_filtered)
+sig_genes <- sum(res_filtered$padj < 0.05)
+up_reg <- sum(res_filtered$padj < 0.05 & res_filtered$log2FoldChange > 0)
+down_reg <- sum(res_filtered$padj < 0.05 & res_filtered$log2FoldChange < 0)
+
+setwd(output_dir)
+sink("counts_summary_deseq_salmon.txt")
+cat("Counts Summary - DESeq (Salmon)\n")
+cat("Total genes tested: ", total_genes, "\n")
+cat("Number of significant genes (padj < 0.05): ", sig_genes, "\n")
+cat("Number of significant upregulated genes: ", up_reg, "\n")
+cat("Number of significant downregulated genes: ", down_reg, "\n")
+sink()
 
 # Results Summary
+results_full <- as.data.frame(res_raw) %>%
+  tibble::rownames_to_column(var = "gene_id") %>%
+  arrange(padj)
+
+results_sig <- as.data.frame(res_raw) %>%
+  tibble::rownames_to_column(var = "gene_id") %>%
+  filter(padj < 0.05) %>%
+  arrange(padj)
+
+results_top_genes <- as.data.frame(res) %>%
+  tibble::rownames_to_column(var = "gene_id") %>%
+  arrange(desc(abs(log2FoldChange))) %>%
+  slice_head(n = 10)
+
+write.csv(results_full, file = "results_full_deseq_salmon.csv")
+write.csv(results_sig, file = "results_sig_deseq_salmon.csv")
+write.csv(results_top_genes, file = "results_top10_deseq_salmon.csv")
 
 
 ## Gene-Level Exploration ##
 # Heatmap of top DEGs
+top50 <- as.data.frame(res_raw) %>%
+  tibble::rownames_to_column(var = "gene_id") %>%
+  filter(!is.na(padj)) %>%
+  arrange(padj) %>%
+  slice_head(n = 50)
 
-# Normalized counts plot
+png("top_genes_heatmap_salmon.png", width=1000, height=800)
+pheatmap(assay(vsd)[top50$gene_id,], 
+         cluster_rows=TRUE, show_rownames=TRUE,
+         cluster_cols=TRUE, annotation_col=metadata["condition"],
+         scale="row", 
+         fontsize_row = 10,
+         fontsize_col = 10,
+         color = colorRampPalette(c("navy", "white", "firebrick3"))(50),
+         main="Top 50 Differentially Expressed Genes")
+dev.off()
 
+# Normalized counts plot for top 3 genes
+top3_genes <- head(results_top_genes$gene_id,3)
+norm_counts <-counts(dds, normalized=TRUE)
+top3_counts <- norm_counts[top3_genes,]
+# Reshape data to long format for ggplot2
+metadata2 <- metadata %>% tibble::rownames_to_column(var = "samples")
+df_top3 <- as.data.frame(top3_counts) %>%
+  tibble::rownames_to_column(var="gene_id") %>%
+  pivot_longer(-gene_id, names_to = "samples", values_to = "count")
+df_top3 <- df_top3 %>% left_join(metadata2, by = "samples")
+
+png("normalized_counts_top3_salmon.png", width=1000, height=800)
+ggplot(df_top3, aes(x = condition, y = count, fill = condition)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.9) +
+  facet_wrap(~gene_id, scales = "free_y") +
+  theme_minimal(base_size = 12) +
+  labs(title = "Normalized Counts for Top 3 DEGs",
+       x = "Condition",
+       y = "Normalized Counts") +
+  theme(legend.position = "none")
+dev.off()
 
 ## Biological Interpretation ##
