@@ -1,5 +1,5 @@
 # =======================================================================================
-# DESeq2 Script
+# DESeq2 Script (HISAT2 Version)
 # =======================================================================================
 # This script ...
 #
@@ -12,7 +12,7 @@ if (!require("BiocManager", quietly = TRUE))
 # The following initializes usage of Bioc devel
 BiocManager::install(version='devel')
 BiocManager::install("DESeq2")
-BiocManager::install("gglot2")
+BiocManager::install("ggplot2")
 BiocManager::install("pheatmap")
 
 # Load necessary libraries
@@ -24,7 +24,7 @@ library(pheatmap)
 # Define working directory paths
 input_dir <- "~/BioinformaticsPortfolio/rna-seq-differential-expression/results/counts/"
 meta_dir <- "~/BioinformaticsPortfolio/rna-seq-differential-expression/config/"
-output_dir <- file.path(Sys.getenv("HOME"), "BioinformaticsPortfolio/rna-seq-differential-expression/results/deseq")
+output_dir <- file.path(Sys.getenv("HOME"), "BioinformaticsPortfolio/rna-seq-differential-expression/results/deseq_hisat")
 
 # Create output directory if it doesn't exist
 if (!dir.exists(output_dir)) {
@@ -69,7 +69,7 @@ de_results <- DESeq(de)
 res <- results(de_results)
 
 # Print results to csv
-write.csv(res, file.path(output_dir, "deseq_results.csv"))
+write.csv(res, file.path(output_dir, "deseq_hisat_results.csv"))
 
 # Transform data for visualization (using rlog() for smaller data set)
 rlog_counts <- rlog(de_results, blind=TRUE)
@@ -91,11 +91,6 @@ dev.off()
 # Dispersion plot - check model fit
 png("dispersion_plot.png", width=800, height=600)
 disp_plot <- plotDispEsts(de_results, main="Dispersion Plot")
-dev.off()
-
-# MA plot - fold changes vs expression
-png("MA_plot.png", width=800, height=600)
-plotMA(rlog_counts, ylim = c(-5, 5), main="MA Plot")
 dev.off()
 
 # Sample distance heatmap - check sample clustering
@@ -124,4 +119,29 @@ cat("Downregulated genes:", sum(sig_genes$log2FoldChange < -lfc_threshold, na.rm
 # Order significant and all results by adjusted p-value
 sig_genes <- sig_genes[order(sig_genes$padj),]
 res_ordered <- res[order(res$padj),]
+
+# Volcano plot - shows significance vs fold change
+png("volcano_plot.png", width=800, height=600)
+with(res, plot(log2FoldChange, -log10(padj), 
+               pch=20, main="Volcano Plot", 
+               xlim=c(-3,3), ylim=c(0,10)))
+with(subset(res, padj < 0.05 & abs(log2FoldChange) > 1), 
+     points(log2FoldChange, -log10(padj), pch=20, col="red"))
+abline(h=-log10(0.05), col="blue", lty=2)
+abline(v=c(-1,1), col="blue", lty=2)
+dev.off()
+
+# Heatmap of top differentially expressed genes
+top_genes <- head(rownames(sig_genes), 50)
+png("top_genes_heatmap.png", width=1000, height=800)
+pheatmap(assay(rlog_counts)[top_genes,], 
+         cluster_rows=TRUE, show_rownames=TRUE,
+         cluster_cols=TRUE, annotation_col=metadata,
+         scale="row", main="Top 50 Differentially Expressed Genes")
+dev.off()
+
+# MA plot - fold changes vs expression
+png("MA_plot.png", width=800, height=600)
+plotMA(rlog_counts, ylim = c(-5, 5), main="MA Plot")
+dev.off()
 

@@ -22,7 +22,7 @@ CONFIG_DIR="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/config
 LOGS_DIR="$HOME/BioinformaticsPortfolio/rna-seq-differential-expression/logs"
 
 # Adapter file
-ADAPTERS="${CONFIG_DIR}/TruSeq3-PE-2.fa"
+ADAPTERS="${CONFIG_DIR}/TruSeq3-PE.fa"
 
 # Phred offset
 PHRED=${2:-"-phred33"}
@@ -118,7 +118,8 @@ else
             exit 1
         fi
 
-        # Run Trimmomatic (paired-end)
+        # Run Trimmomatic (paired-end) 
+        # Confirm adapter depending on library prep kit
         trimmomatic PE $PHRED "$RAW_R1" "$RAW_R2" \
             "$PAIRED_R1" "$UNPAIRED_R1" \
             "$PAIRED_R2" "$UNPAIRED_R2" \

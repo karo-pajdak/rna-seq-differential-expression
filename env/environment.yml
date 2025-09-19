@@ -17,3 +17,7 @@ dependencies:
 # Alignment
 - hisat2
 - samtools
+- subread #featureCounts
+
+# Pseudoalignment/Quantification
+- salmon

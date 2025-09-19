@@ -47,7 +47,7 @@ if [ "$THREADS" -gt 1 ]; then
     fi
 
     # Export variables so parallel jobs can access them
-    export INPUT_DIR OUTPUT_DIR LOGS_DIR TOTAL_CORES SAMPLES_AT_ONCE
+    export INPUT_DIR OUTPUT_DIR LOGS_DIR TOTAL_CORES SAMPLES_AT_ONCE TIMESTAMP
 
     # Run FastQC in parallel
     parallel -j "$SAMPLES_AT_ONCE" -a "$CONFIG_DIR/samples.txt" '
@@ -106,7 +106,7 @@ else
         # Find each sample in input directory 
         R1="${INPUT_DIR}/${SAMPLE}${SUFFIX1}"
         R2="${INPUT_DIR}/${SAMPLE}${SUFFIX2}"
-        LOG_FILE="${LOGS_DIR}/${SAMPLE}_fastqc.log"
+        LOG_FILE="${LOGS_DIR}/${SAMPLE}_fastqc_${TIMESTAMP}.log"
 
         # Check if files exist
         if [ ! -f "$R1" ] || [ ! -f "$R2" ]; then

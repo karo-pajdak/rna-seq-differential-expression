@@ -2,7 +2,7 @@
 ### Single-threaded
 1. Download all .sra files first:
 ```
-esearch -db sra -query PRJNA1224751 | efetch -format runinfo | cut -d',' -f1 | grep SRR | while read srr; do prefetch --output-directory . $srr; done
+esearch -db sra -query PRJNA1062723 | efetch -format runinfo | cut -d',' -f1 | grep SRR | while read srr; do prefetch --output-directory . $srr; done
 ```
 2. Then convert all .sra files to FASTQ
 ```
@@ -20,7 +20,7 @@ Notes:
 ### Parallel Version 
 1. Download all .sra files first:
 ```
-esearch -db sra -query PRJNA1224751 | efetch -format runinfo | cut -d',' -f1 | grep SRR | parallel -j 4 'prefetch --output-directory . {}'
+esearch -db sra -query PRJNA1062723 | efetch -format runinfo | cut -d',' -f1 | grep SRR | parallel -j 4 'prefetch --output-directory . {}'
 ```
 2. Then convert all .sra files to FASTQ
 ```
