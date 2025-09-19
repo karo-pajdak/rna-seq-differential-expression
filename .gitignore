@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Logs
+logs/
+
+# Data (raw, reference, trimmed, results)
+data/raw/
+data/reference/
+data/trimmed/
+results/
+
+# Other untracked files
+*.csv
+*.tsv
+*.fastq
+*.bam
+*.sam
+*.gz
+
