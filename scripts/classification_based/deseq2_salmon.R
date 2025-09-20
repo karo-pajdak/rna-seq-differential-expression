@@ -1,8 +1,12 @@
 # =======================================================================================
 # DESeq2 Script (Salmon Version)
 # =======================================================================================
-# This script ...
-#
+# This script performs RNA-seq differential expression analysis using Salmon quantifications. 
+# It includes data import, gene-level summarization, DE testing with fold-change shrinkage, 
+# quality control (dispersion, PCA, sample distances), and visualization of DE results 
+# (MA plots, volcano plots, heatmaps, normalized counts). 
+# Functional enrichment (GO and KEGG) is performed on significant genes, and all results 
+# are exported for reproducibility and portfolio presentation.
 # =======================================================================================
 
 # Install necessary packages 
@@ -18,6 +22,8 @@ BiocManager::install("tximport")
 BiocManager::install("txdbmaker")
 BiocManager::install("apeglm")
 BiocManager::install("ggrepel")
+BiocManager::install("clusterProfiler")
+BiocManager::install("org.Hs.eg.db")
 
 library(tximport)
 library(txdbmaker)
@@ -27,7 +33,8 @@ library(dplyr)
 library(pheatmap)
 library(RColorBrewer)
 library(tidyr)
-
+library(clusterProfiler)
+library(org.Hs.eg.db) 
 
 
 ## Set Up ##
@@ -82,9 +89,11 @@ png("dispersion_plot_salmon.png", width=800, height=600)
 disp_plot <- plotDispEsts(dds, main="Dispersion Plot")
 dev.off()
 
+# VST transformation for PCA and heatmap
+vsd <- vst(dds, blind = TRUE)
+
 # PCA Plot - check sample clustering by condition
 png("PCA_plot_salmon.png", width=800, height=600)
-vsd <- vst(dds, blind = TRUE)
 pcaData <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
 percentVar <- round(100 * attr(pcaData, "percentVar"))
 ggplot(pcaData, aes(PC1, PC2, color = condition)) +
@@ -159,7 +168,7 @@ cat("Number of significant upregulated genes: ", up_reg, "\n")
 cat("Number of significant downregulated genes: ", down_reg, "\n")
 sink()
 
-# Results Summary
+# Export full results, significant genes, top 10 DEGs
 results_full <- as.data.frame(res_raw) %>%
   tibble::rownames_to_column(var = "gene_id") %>%
   arrange(padj)
@@ -222,3 +231,29 @@ ggplot(df_top3, aes(x = condition, y = count, fill = condition)) +
 dev.off()
 
 ## Biological Interpretation ##
+sig_genes_vector <- as.data.frame(res_filtered) %>% 
+  filter(padj < 0.05) %>%
+  rownames()
+sig_genes_clean <- gsub("\\..*$", "", sig_genes_vector)
+
+entrez <- mapIds(org.Hs.eg.db, keys = sig_genes_clean,
+                 column = "ENTREZID", keytype = "ENSEMBL", multiVals = "first")
+
+ego <- enrichGO(gene = entrez,
+                OrgDb = org.Hs.eg.db,
+                keyType = "ENTREZID",
+                ont = "BP",
+                pAdjustMethod = "BH",
+                qvalueCutoff = 0.05)
+
+ekegg <- enrichKEGG(gene = entrez,
+                   organism = 'hsa',
+                   pvalueCutoff = 0.05)
+
+png("go_enrichment_salmon.png", width=800, height=600)
+barplot(ego, showCategory = 15, title = "Top GO Terms")
+dev.off()
+
+png("kegg_enrichment_salmon.png", width=800, height=600)
+dotplot(ekegg, showCategory = 15, title = "KEGG Pathways")
+dev.off()
